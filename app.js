@@ -1,12 +1,13 @@
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
+const bcrypt = require('bcrypt'); // Para cifrar contraseñas
 const app = express();
 app.use(express.json());
 
-// 🔗 Conectar a Supabase
+// 🔗 Conectar a Supabase con las credenciales directamente
 const supabase = createClient(
-  'https://klayfakyexirscpkrcwk.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsYXlmYWt5ZXhpcnNjcGtyY3drIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTEzNDkyMywiZXhwIjoyMDc2NzEwOTIzfQ.BKvPYdP-oidN90nqXizmQsXTqUyWcA7YSsXqnasg280'
+  'https://bazphlbvqedefqujpimj.supabase.co', // URL de Supabase
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhenBobGJ2cWVkZWZxdWpwaW1qIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTEzNDkyMywiZXhwIjoyMDc3NDMzODAxfQ.vA_ScGKCgSAP1qqNxq0b76K73jNzLJFoJFxmG9vgH_o' // Clave de Supabase
 );
 
 // 🚀 Ruta de prueba
@@ -16,11 +17,14 @@ app.get('/', (req, res) => {
 
 // 🏪 Registrar restaurante
 app.post('/registrarRestaurante', async (req, res) => {
-  const { nombre, correo, telefono, direccion } = req.body;
+  const { nombre, correo, telefono, direccion, contrasena } = req.body;
+
+  // Cifrar la contraseña antes de guardarla
+  const contrasena_hash = await bcrypt.hash(contrasena, 10);
 
   const { data, error } = await supabase
     .from('restaurantes')
-    .insert([{ nombre, correo_contacto: correo, telefono, direccion }])
+    .insert([{ nombre, correo, contrasena_hash, correo_contacto: correo, telefono, direccion }])
     .select('*');
 
   if (error) return res.status(400).json({ error: error.message });
@@ -32,11 +36,11 @@ app.post('/registrarRestaurante', async (req, res) => {
 
 // 👨‍💼 Registrar usuario
 app.post('/registrarUsuario', async (req, res) => {
-  const { restauranteId, nombre, correo, rol, telefono } = req.body;
+  const { restauranteId, nombre, correo, telefono } = req.body;
 
   const { data, error } = await supabase
     .from('usuarios')
-    .insert([{ restaurante_id: restauranteId, nombre, correo, rol, telefono }])
+    .insert([{ restaurante_id: restauranteId, nombre, correo, telefono }])
     .select('*');
 
   if (error) return res.status(400).json({ error: error.message });
@@ -49,7 +53,7 @@ app.post('/registrarUsuario', async (req, res) => {
 // 👥 Registrar cliente
 app.post('/registrarCliente', async (req, res) => {
   const { restauranteId, nombre, telefono, correo } = req.body;
-  const codigo = Math.random().toString(36).substring(7);
+  const codigo = Math.random().toString(36).substring(7); // Generar un código de referido aleatorio
 
   const { data, error } = await supabase
     .from('clientes')
@@ -70,7 +74,7 @@ app.post('/registrarReferido', async (req, res) => {
 
   const { data, error } = await supabase
     .from('referidos')
-    .insert([{ restaurante_id: restauranteId, cliente_id: clienteId, codigo_referido: codigoReferido }])
+    .insert([{ restaurante_id: restauranteId, cliente_owner_id: clienteId, codigo_referido: codigoReferido }])
     .select('*');
 
   if (error) return res.status(400).json({ error: error.message });
@@ -140,14 +144,14 @@ app.get('/clientes/:id/resumen', async (req, res) => {
   const { count: totalReferidos, error: errRef } = await supabase
     .from('referidos')
     .select('*', { count: 'exact', head: true })
-    .eq('cliente_id', clienteId);
+    .eq('cliente_owner_id', clienteId);
 
   if (errRef) return res.status(400).json({ error: errRef.message });
 
   const { data: refsDelCliente, error: errRefsData } = await supabase
     .from('referidos')
     .select('id')
-    .eq('cliente_id', clienteId);
+    .eq('cliente_owner_id', clienteId);
 
   if (errRefsData) return res.status(400).json({ error: errRefsData.message });
 
@@ -224,32 +228,9 @@ app.post('/usarCodigo', async (req, res) => {
   });
 });
 
-// 💳 Registrar suscripción
-app.post('/registrarSuscripcion', async (req, res) => {
-  const { restauranteId, fecha_inicio, fecha_fin, monto_pagado, estado } = req.body;
-
-  const estadosValidos = ['activa', 'vencida', 'cancelada'];
-  if (!estadosValidos.includes(estado.toLowerCase())) {
-    return res.status(400).json({
-      error: "Estado no válido. Usa 'activa', 'vencida' o 'cancelada'."
-    });
-  }
-
-  const { data, error } = await supabase
-    .from('suscripciones')
-    .insert([{ restaurante_id: restauranteId, fecha_inicio, fecha_fin, monto_pagado, estado }])
-    .select('*');
-
-  if (error) return res.status(400).json({ error: error.message });
-
-  res.status(201).json({
-    message: 'Suscripción registrada con éxito',
-    suscripcion: data[0]
-  });
-});
-
 // 🟢 Iniciar servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
+
