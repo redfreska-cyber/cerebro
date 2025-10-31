@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import bcrypt from "bcrypt";
 
 export const config = {
   api: {
@@ -6,7 +7,7 @@ export const config = {
   },
 };
 
-// Conexión con tus variables de entorno (Vercel)
+// 🔗 Conexión segura a Supabase
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -24,7 +25,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Faltan datos obligatorios" });
     }
 
-    // ⚙️ Inserción de datos en la tabla restaurantes
+    // 🔐 Hashear la contraseña antes de guardarla
+    const contrasena_hash = await bcrypt.hash(contrasena, 10);
+
+    // 🧾 Insertar en la tabla restaurantes
     const { data, error } = await supabase
       .from("restaurantes")
       .insert([
@@ -35,7 +39,7 @@ export default async function handler(req, res) {
           correo_contacto: correo,
           telefono,
           direccion,
-          contrasena_hash: contrasena, // <--- campo correcto
+          contrasena_hash, // almacenamos el hash, no la contraseña
           plan_actual: "free",
           estado_suscripcion: "activa",
           fecha_inicio: new Date().toISOString(),
@@ -45,7 +49,7 @@ export default async function handler(req, res) {
 
     if (error) throw error;
 
-    res.status(200).json({
+    res.status(201).json({
       mensaje: "✅ Restaurante registrado correctamente",
       data,
     });
