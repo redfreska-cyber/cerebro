@@ -1,36 +1,46 @@
 import { createClient } from "@supabase/supabase-js";
 
-// ✅ Necesario para que Vercel acepte JSON en el body
 export const config = {
   api: {
     bodyParser: true,
   },
 };
 
-// ✅ Conexión a Supabase usando tus variables de entorno de Vercel
+// Conexión con tus variables de entorno (Vercel)
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// ✅ Endpoint para registrar un restaurante
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método no permitido" });
   }
 
   try {
-    const { nombre, correo, telefono, direccion, contrasena, ruc } = req.body;
+    const { nombre, ruc, correo, telefono, direccion, contrasena } = req.body;
 
-    // Validar campos obligatorios
-    if (!nombre || !correo) {
+    if (!nombre || !correo || !contrasena) {
       return res.status(400).json({ error: "Faltan datos obligatorios" });
     }
 
-    // Insertar restaurante en la tabla
+    // ⚙️ Inserción de datos en la tabla restaurantes
     const { data, error } = await supabase
       .from("restaurantes")
-      .insert([{ nombre, correo, telefono, direccion, contrasena, ruc }])
+      .insert([
+        {
+          nombre,
+          ruc,
+          correo,
+          correo_contacto: correo,
+          telefono,
+          direccion,
+          contrasena_hash: contrasena, // <--- campo correcto
+          plan_actual: "free",
+          estado_suscripcion: "activa",
+          fecha_inicio: new Date().toISOString(),
+        },
+      ])
       .select();
 
     if (error) throw error;
@@ -44,4 +54,3 @@ export default async function handler(req, res) {
     res.status(500).json({ error: error.message });
   }
 }
-
