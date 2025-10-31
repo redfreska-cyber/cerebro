@@ -1,13 +1,15 @@
+require('dotenv').config(); // <--- Esto carga tu .env automáticamente
+
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
-const bcrypt = require('bcrypt'); // Para cifrar contraseñas
+const bcrypt = require('bcrypt');
 const app = express();
 app.use(express.json());
 
-// 🔗 Conectar a Supabase con las credenciales directamente
+// 🔗 Conectar a Supabase de forma segura
 const supabase = createClient(
-  'https://bazphlbvqedefqujpimj.supabase.co', // URL de Supabase
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhenBobGJ2cWVkZWZxdWpwaW1qIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTEzNDkyMywiZXhwIjoyMDc3NDMzODAxfQ.vA_ScGKCgSAP1qqNxq0b76K73jNzLJFoJFxmG9vgH_o' // Clave de Supabase
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 // 🚀 Ruta de prueba
